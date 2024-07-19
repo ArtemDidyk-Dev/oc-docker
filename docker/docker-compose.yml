@@ -1,0 +1,63 @@
+version: '3'
+services:
+  php-fpm:
+    build:
+      context: ./php-fpm
+    volumes:
+      - ../www/:/var/www
+      - ./storage:/var/storage/
+    networks:
+      - app-network
+    container_name: ${PROJECT_NAME}_app
+  nginx:
+    build:
+      context: ./nginx
+    volumes:
+      - ../www/:/var/www
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/sites/:/etc/nginx/sites-available
+      - ./nginx/conf.d/:/etc/nginx/conf.d
+    depends_on:
+      - php-fpm
+    ports:
+      - "8181:80"
+      - "443:443" 
+    networks:
+      - app-network
+    container_name: ${PROJECT_NAME}_nginx
+  db:   
+    build:
+      context: ./database
+
+    restart: always
+    ports:
+      - 3306:3306
+    volumes:
+      - ./database/data/:/docker-entrypoint-initdb.d/
+      - ./database/data/my.cnf:/etc/mysql/my.cnf
+      - ./database/data/mysql:/var/lib/mysql
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${DB_USERNAME}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD_ROOT}
+    networks:
+      - app-network
+    container_name: ${PROJECT_NAME}_db
+  phpmyadmin:
+    image: phpmyadmin
+    restart: always
+    ports:
+      - 8090:80
+    environment:
+      - PMA_ARBITRARY=1
+    networks:
+      - app-network
+    container_name: ${PROJECT_NAME}_phpmyadmin
+networks:
+  app-network:
+    driver: bridge
+volumes:
+  dbdata:
+    driver: local
